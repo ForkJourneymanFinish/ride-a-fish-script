@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ride a Fish Script — Lua Executor for Windows</title>
+<meta name="description" content="Ride a Fish Script — Lua executor script that mounts any fish, rides it across water, boosts speed, and syncs animations for multiplayer servers.">
+<style>
+  :root{
+    --bg-0:#05060f;
+    --bg-1:#0a0f24;
+    --bg-2:#111a3a;
+    --indigo:#6366f1;
+    --violet:#8b5cf6;
+    --cyan:#22d3ee;
+    --text:#e7eaf6;
+    --muted:#9aa3c4;
+    --card:rgba(255,255,255,0.045);
+    --stroke:rgba(255,255,255,0.10);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(99,102,241,0.28), transparent 60%),
+      radial-gradient(900px 600px at 90% 0%, rgba(34,211,238,0.16), transparent 55%),
+      radial-gradient(1000px 800px at 50% 110%, rgba(139,92,246,0.20), transparent 60%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+    background-attachment:fixed;
+    color:var(--text);
+    min-height:100vh;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{width:min(1120px,92vw);margin:0 auto}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
+    background:rgba(8,12,30,0.62);
+    border-bottom:1px solid var(--stroke);
+  }
+  .nav-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:18px;padding:14px 0;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;font-size:1.02rem}
+  .brand .logo{
+    width:32px;height:32px;border-radius:10px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--indigo),var(--cyan));
+    box-shadow:0 6px 22px rgba(99,102,241,.45);
+    font-size:17px;
+  }
+  .brand span.hl{
+    background:linear-gradient(90deg,#a5b4fc,#67e8f9);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:.92rem;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:#fff}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    font-weight:700;font-size:.94rem;border-radius:12px;
+    padding:11px 20px;cursor:pointer;border:1px solid transparent;
+    transition:transform .18s ease, box-shadow .25s ease, background .25s ease, border-color .2s;
+    white-space:nowrap;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 55%,#22d3ee 130%);
+    color:#fff;
+    box-shadow:0 10px 30px rgba(99,102,241,.40), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(99,102,241,.55)}
+  .btn-ghost{
+    background:rgba(255,255,255,0.045);
+    border:1px solid var(--stroke);
+    color:var(--text);
+  }
+  .btn-ghost:hover{background:rgba(255,255,255,0.09);transform:translateY(-2px)}
+  .btn-sm{padding:9px 16px;font-size:.86rem;border-radius:10px}
+
+  /* ---------- HERO ---------- */
+  header.hero{padding:78px 0 40px;text-align:center;position:relative}
+  .pill{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:7px 16px;border-radius:999px;font-size:.8rem;font-weight:600;
+    color:#c7d2fe;letter-spacing:.4px;
+    background:rgba(99,102,241,0.12);
+    border:1px solid rgba(129,140,248,0.35);
+    box-shadow:0 0 26px rgba(99,102,241,.20);
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  h1{
+    margin:22px auto 16px;max-width:900px;
+    font-size:clamp(2.1rem,5.4vw,4rem);line-height:1.08;letter-spacing:-1.2px;
+    font-weight:800;
+    background:linear-gradient(100deg,#ffffff 0%,#c7d2fe 38%,#67e8f9 72%,#a78bfa 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 10px 40px rgba(99,102,241,.25));
+  }
+  .hero p.lead{
+    max-width:660px;margin:0 auto 30px;color:var(--muted);font-size:1.06rem;
+  }
+  .hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:44px}
+  .hero-actions .btn{padding:14px 28px;font-size:1rem}
+
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+    width:min(900px,100%);margin:0 auto;
+  }
+  .stat{
+    background:var(--card);border:1px solid var(--stroke);border-radius:14px;
+    padding:16px 10px;backdrop-filter:blur(8px);
+    transition:transform .2s, border-color .2s;
+  }
+  .stat:hover{transform:translateY(-3px);border-color:rgba(129,140,248,.45)}
+  .stat .v{font-weight:800;font-size:1.12rem;letter-spacing:-.3px}
+  .stat .k{font-size:.74rem;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin-top:2px}
+
+  /* ---------- SECTION ---------- */
+  section{padding:74px 0}
+  .sec-head{text-align:center;max-width:640px;margin:0 auto 46px}
+  .sec-tag{font-size:.78rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#818cf8}
+  .sec-head h2{
+    font-size:clamp(1.6rem,3.4vw,2.4rem);letter-spacing:-.8px;margin:10px 0 12px;font-weight:800;
+  }
+  .sec-head p{color:var(--muted);font-size:.98rem}
+
+  /* ---------- FEATURES ---------- */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .card{
+    position:relative;overflow:hidden;
+    background:linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02));
+    border:1px solid var(--stroke);border-radius:var(--radius);
+    padding:26px 22px 24px;
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s;
+  }
+  .card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--indigo),var(--cyan));
+    opacity:.85;
+  }
+  .card:nth-child(2)::before{background:linear-gradient(90deg,#8b5cf6,#ec4899)}
+  .card:nth-child(3)::before{background:linear-gradient(90deg,#22d3ee,#34d399)}
+  .card:nth-child(4)::before{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+  .card:nth-child(5)::before{background:linear-gradient(90deg,#6366f1,#22d3ee)}
+  .card:nth-child(6)::before{background:linear-gradient(90deg,#a78bfa,#f472b6)}
+  .card:hover{
+    transform:translateY(-7px);
+    border-color:rgba(129,140,248,.45);
+    box-shadow:0 22px 44px rgba(0,0,0,.45), 0 0 0 1px rgba(129,140,248,.10) inset;
+  }
+  .card .ico{
+    font-size:1.6rem;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+    background:rgba(99,102,241,.14);border:1px solid rgba(129,140,248,.22);margin-bottom:16px;
+  }
+  .card h3{font-size:1.05rem;margin-bottom:8px;letter-spacing:-.2px}
+  .card p{font-size:.9rem;color:var(--muted)}
+
+  /* ---------- HOW IT WORKS ---------- */
+  .steps{position:relative;max-width:760px;margin:0 auto;padding-left:8px}
+  .steps::before{
+    content:"";position:absolute;left:31px;top:14px;bottom:14px;width:2px;
+    background:linear-gradient(180deg,#6366f1,#8b5cf6,#22d3ee);
+    border-radius:2px;opacity:.65;
+  }
+  .step{display:flex;gap:22px;position:relative;padding:0 0 34px}
+  .step:last-child{padding-bottom:0}
+  .step .num{
+    flex:0 0 50px;height:50px;border-radius:50%;display:grid;place-items:center;
+    font-weight:800;font-size:1.05rem;color:#fff;position:relative;z-index:2;
+    background:linear-gradient(135deg,#4f46e5,#7c3aed);
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:0 0 0 6px rgba(10,15,36,.95), 0 10px 24px rgba(99,102,241,.45);
+  }
+  .step:nth-child(2) .num{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+  .step:nth-child(3) .num{background:linear-gradient(135deg,#0891b2,#22d3ee)}
+  .step .body{padding-top:4px}
+  .step h3{font-size:1.06rem;margin-bottom:6px;letter-spacing:-.2px}
+  .step p{font-size:.92rem;color:var(--muted);max-width:560px}
+
+  /* ---------- FAQ ---------- */
+  .faq{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  details{
+    background:var(--card);border:1px solid var(--stroke);border-radius:14px;
+    overflow:hidden;transition:border-color .2s, background .2s;
+  }
+  details[open]{border-color:rgba(129,140,248,.45);background:rgba(99,102,241,.07)}
+  summary{
+    list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    gap:16px;padding:18px 20px;font-weight:600;font-size:.98rem;user-select:none;
+  }
+  summary::-webkit-details-marker{display:none}
+  .plus{
+    flex:0 0 26px;height:26px;position:relative;border-radius:8px;
+    background:rgba(255,255,255,.06);border:1px solid var(--stroke);
+    transition:transform .28s ease, background .2s;
+  }
+  .plus::before,.plus::after{
+    content:"";position:absolute;top:50%;left:50%;background:#c7d2fe;border-radius:2px;
+    transform:translate(-50%,-50%);
+  }
+  .plus::before{width:12px;height:2px}
+  .plus::after{width:2px;height:12px;transition:opacity .2s, transform .28s}
+  details[open] .plus{transform:rotate(45deg);background:rgba(99,102,241,.25)}
+  details[open] .plus::after{opacity:0}
+  details p{padding:0 20px 20px;color:var(--muted);font-size:.91rem;max-width:680px}
+
+  /* ---------- CTA BANNER ---------- */
+  .cta-banner{
+    position:relative;overflow:hidden;text-align:center;
+    border-radius:26px;padding:60px 26px;
+    background:linear-gradient(160deg,rgba(99,102,241,.20),rgba(34,211,238,.08) 60%,rgba(139,92,246,.18));
+    border:1px solid rgba(129,140,248,.30);
+    box-shadow:0 30px 80px rgba(0,0,0,.45);
+  }
+  .cta-banner::before{
+    content:"";position:absolute;width:640px;height:640px;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle,rgba(99,102,241,.42),transparent 62%);
+    pointer-events:none;
+  }
+  .cta-banner h2{
+    position:relative;font-size:clamp(1.55rem,3.6vw,2.5rem);letter-spacing:-.9px;font-weight:800;margin-bottom:12px;
+  }
+  .cta-banner p{position:relative;color:#c3c9e6;max-width:520px;margin:0 auto 28px;font-size:.98rem}
+  .cta-banner .btn{position:relative;padding:15px 32px;font-size:1rem}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--stroke);
+    background:rgba(5,7,18,.6);
+    padding:30px 0;
+  }
+  .foot{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-size:.86rem;color:var(--muted);
+  }
+  .foot a{color:#a5b4fc;transition:color .2s}
+  .foot a:hover{color:#fff}
+  .foot .right{display:flex;gap:20px;align-items:center}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:900px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:640px){
+    .nav-links{display:none}
+    .nav-inner{padding:12px 0}
+    header.hero{padding:52px 0 30px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:1fr}
+    section{padding:56px 0}
+    .steps::before{left:25px}
+    .step{gap:16px}
+    .step .num{flex:0 0 42px;height:42px;font-size:.95rem}
+    .hero-actions .btn{width:100%}
+    .foot{flex-direction:column;text-align:center}
+    .cta-banner{padding:44px 20px}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="logo">🐟</span>
+      <span>Ride a Fish <span class="hl">Script</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="btn btn-primary btn-sm" href="https://gitscore.cc">Download</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="pill"><span class="dot"></span> Lua Executor · Ride a Fish Script</div>
+    <h1>Mount any fish, ride it across the water</h1>
+    <p class="lead">
+      Ride a Fish Script is a lightweight Lua executor script for Windows that lets you mount any fish,
+      glide across oceans, boost your speed, and keep animations perfectly synced on multiplayer servers.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://gitscore.cc">⬇ Download for Windows</a>
+      <a class="btn btn-ghost" href="https://gitscore.cc">★ View on GitHub</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">128,400+</div><div class="k">Downloads</div></div>
+      <div class="stat"><div class="v">v3.2.1</div><div class="k">Latest version</div></div>
+      <div class="stat"><div class="v">Windows 10 / 11</div><div class="k">Platform</div></div>
+      <div class="stat"><div class="v">Free &amp; open source</div><div class="k">License</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">Features</div>
+      <h2>Everything you need to ride the ocean</h2>
+      <p>Built for speed, stability, and clean multiplayer sync — no lag spikes, no desyncs.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="ico">🐠</div>
+        <h3>Mount any fish</h3>
+        <p>Attach to any fish model in the game instantly. Whales, sharks, koi — if it swims, you can ride it.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🌊</div>
+        <h3>Ride across water</h3>
+        <p>Glide seamlessly over ocean surfaces with stable physics and no fall-through bugs or clipping.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⚡</div>
+        <h3>Speed boost</h3>
+        <p>Toggle a configurable speed multiplier to cruise faster, with smooth acceleration and no rubber-banding.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🎞️</div>
+        <h3>Animation sync</h3>
+        <p>Riding animations stay synced for every player on the server, so others see exactly what you see.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🖥️</div>
+        <h3>Windows native</h3>
+        <p>A single lightweight executor for Windows 10 and 11. No dependencies, no bloat, instant launch.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔓</div>
+        <h3>Free &amp; open source</h3>
+        <p>The full Lua source is public. Audit it, fork it, or extend it with your own custom fish logic.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">How it works</div>
+      <h2>Three steps to your first ride</h2>
+      <p>From download to riding a fish in under a minute.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3>Download and launch the executor</h3>
+          <p>Grab the latest build from the download page, extract the archive, and run the Windows executable. No installer or setup wizard required.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3>Load the Ride a Fish Script</h3>
+          <p>Paste the script into the executor console or load it from the bundled file. The executor attaches to your game client and injects the Lua module.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div class="body">
+          <h3>Pick a fish and ride</h3>
+          <p>Select any fish from the in-game menu, toggle the speed boost, and start riding. Animations sync automatically for everyone in the server.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">FAQ</div>
+      <h2>Frequently asked questions</h2>
+      <p>Quick answers about the Ride a Fish Script and the Windows executor.</p>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Which Windows versions are supported?<span class="plus"></span></summary>
+        <p>The executor runs on Windows 10 and Windows 11 (64-bit). It is a standalone binary, so no additional runtimes or dependencies need to be installed.</p>
+      </details>
+      <details>
+        <summary>Does the script work on multiplayer servers?<span class="plus"></span></summary>
+        <p>Yes. Ride a Fish Script is built specifically for multiplayer: mount states, riding animations, and speed changes are synced across all connected players so everyone sees the same thing.</p>
+      </details>
+      <details>
+        <summary>Can I change the speed boost multiplier?<span class="plus"></span></summary>
+        <p>Absolutely. The speed multiplier, mount height, and animation blend speed are exposed as configurable values at the top of the Lua script. Edit them before loading to match your preference.</p>
+      </details>
+      <details>
+        <summary>Is the script free and open source?<span class="plus"></span></summary>
+        <p>Yes — Ride a Fish Script is completely free and the source is publicly available. You can audit the Lua code, fork the repository, and contribute improvements via the GitHub link in the footer.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-banner">
+      <h2>Ready to ride a fish today?</h2>
+      <p>Download the Ride a Fish Script for Windows and mount your first fish in under a minute. Free, open source, and multiplayer-ready.</p>
+      <a class="btn btn-primary" href="https://gitscore.cc">⬇ Download Ride a Fish Script</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>© 2025 Ride a Fish Script. All rights reserved.</div>
+    <div class="right">
+      <a href="https://gitscore.cc">GitHub</a>
+      <a href="https://gitscore.cc">Download</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
